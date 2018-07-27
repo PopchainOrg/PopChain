@@ -217,6 +217,30 @@ static void DebugPrintInit()
     vMsgsBeforeOpenLog = new list<string>;
 }
 
+void ReduceDebugFile()
+{
+    // Scroll debug.log if it's getting too big
+    boost::filesystem::path logPath = GetDataDir() / "debug.log";
+    FILE* file = fopen(logPath.string().c_str(), "r");
+    if (file && boost::filesystem::file_size(logPath) > 10 * 1000000)
+    {
+        // Restart the file with some of the end
+        std::vector <char> vch(200000,0);
+        fseek(file, -((long)vch.size()), SEEK_END);
+        int nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
+        fclose(file);
+
+        file = fopen(logPath.string().c_str(), "w");
+        if (file)
+        {
+            fwrite(begin_ptr(vch), 1, nBytes, file);
+            fclose(file);
+        }
+    }
+    else if (file != NULL)
+        fclose(file);
+}
+
 void OpenDebugLog()
 {
     boost::call_once(&DebugPrintInit, debugPrintInitFlag);
@@ -794,30 +818,6 @@ void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length) {
         length -= now;
     }
 #endif
-}
-
-void ShrinkDebugFile()
-{
-    // Scroll debug.log if it's getting too big
-    boost::filesystem::path pathLog = GetDataDir() / "debug.log";
-    FILE* file = fopen(pathLog.string().c_str(), "r");
-    if (file && boost::filesystem::file_size(pathLog) > 10 * 1000000)
-    {
-        // Restart the file with some of the end
-        std::vector <char> vch(200000,0);
-        fseek(file, -((long)vch.size()), SEEK_END);
-        int nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
-        fclose(file);
-
-        file = fopen(pathLog.string().c_str(), "w");
-        if (file)
-        {
-            fwrite(begin_ptr(vch), 1, nBytes, file);
-            fclose(file);
-        }
-    }
-    else if (file != NULL)
-        fclose(file);
 }
 
 #ifdef WIN32
